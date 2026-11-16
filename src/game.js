@@ -339,6 +339,7 @@ export function createGame(opts) {
 
   /** Earliest thing the segment a-b meets, or null. */
   function collide(a, b) {
+    /** @type {any} */
     let best = null;
     const consider = (hit) => {
       if (hit && (!best || hit.t < best.t)) best = hit;
