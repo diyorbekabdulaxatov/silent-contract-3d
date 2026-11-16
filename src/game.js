@@ -2,7 +2,7 @@
 // The game: render loop, camera and scope, sway and breath, firing, bullet flight, hits and
 // the mission's win and fail rules.
 import * as THREE from 'three';
-import { KESTREL, zeroAngle, step, silhouetteHit, segmentBox, BODY, SOUND_SPEED } from './ballistics.js';
+import { KESTREL, zeroAngle, shotAt, step, silhouetteHit, segmentBox, BODY, SOUND_SPEED } from './ballistics.js';
 import { buildWorld } from './world.js';
 import { PAPER, paintHole } from './textures.js';
 import { drawScope, clearScope } from './scope.js';
@@ -14,13 +14,15 @@ const YAW_LIMIT = 1.05;
 const PITCH_MIN = -0.42;
 const PITCH_MAX = 0.32;
 const SWAY = 0.0019;
+/** Field of view that counts as 1x through the scope (roughly the eye's natural view). */
+const SCOPE_REF_FOV = 28;
 const SUBSTEP = 1 / 1000;
 /** @type {Record<string, number>} */
 const QUALITY_RATIO = { low: 1, medium: 1.5, high: 2 };
 
 /** Vertical field of view through the scope at a given magnification. */
 function scopeFov(zoom) {
-  return (2 * Math.atan(Math.tan((BASE_FOV * Math.PI) / 360) / zoom) * 180) / Math.PI;
+  return (2 * Math.atan(Math.tan((SCOPE_REF_FOV * Math.PI) / 360) / zoom) * 180) / Math.PI;
 }
 
 /**
@@ -56,6 +58,9 @@ export function createGame(opts) {
   const center = new THREE.Vector2(0, 0);
   const tmpDir = new THREE.Vector3();
   const tmpRight = new THREE.Vector3();
+  const tmpUp = new THREE.Vector3();
+  /** Test hook: no sway, so automated shots land where they are aimed. */
+  let steady = false;
 
   const view = { w: 1, h: 1, dpr: 1, ratio: 1 };
   const perf = { frames: 0, total: 0, checked: false, auto: 'high' };
@@ -147,8 +152,10 @@ export function createGame(opts) {
     camera.getWorldDirection(tmpDir);
     tmpRight.set(1, 0, 0).applyQuaternion(camera.quaternion);
     tmpDir.applyAxisAngle(tmpRight, zero);
+    // The bore sits a few centimetres under the scope.
+    tmpUp.set(0, 1, 0).applyQuaternion(camera.quaternion).multiplyScalar(rifle.sightHeight);
     s.bullets.push({
-      x: camera.position.x, y: camera.position.y, z: camera.position.z,
+      x: camera.position.x - tmpUp.x, y: camera.position.y - tmpUp.y, z: camera.position.z - tmpUp.z,
       vx: tmpDir.x * rifle.velocity, vy: tmpDir.y * rifle.velocity, vz: tmpDir.z * rifle.velocity,
       t: 0, drag: rifle.drag
     });
@@ -241,7 +248,7 @@ export function createGame(opts) {
       s.breath = Math.min(1, s.breath + dt / 3.5);
       if (s.tired > 0) s.tired -= dt;
     }
-    const swayTarget = rifle.swayMul * (s.holding ? 0.12 : s.tired > 0 ? 2 : 1) * (s.scoped ? 1 : 0.25);
+    const swayTarget = steady ? 0 : rifle.swayMul * (s.holding ? 0.12 : s.tired > 0 ? 2 : 1) * (s.scoped ? 1 : 0.25);
     s.swayMul += (swayTarget - s.swayMul) * Math.min(1, dt * 4);
     s.swayT += dt;
     const swayYaw = SWAY * s.swayMul * (Math.sin(s.swayT * 0.71) * 0.6 + Math.sin(s.swayT * 1.37 + 0.5) * 0.4);
@@ -299,7 +306,7 @@ export function createGame(opts) {
       camera.updateProjectionMatrix();
     }
     rifleModel.visible = s.fov > BASE_FOV * 0.8;
-    rifleModel.position.z = -0.42 + s.recoil * 1.6;
+    rifleModel.position.z = -0.42 + s.recoil * 1.2;
     rifleModel.rotation.x = s.recoil * 2.5;
   }
 
@@ -507,13 +514,29 @@ export function createGame(opts) {
         s.result = 'win';
         finish();
       },
+      canFire,
+      /** @param {boolean} on */
+      steady(on) {
+        steady = on;
+        if (on) s.swayMul = 0;
+      },
       aimAt(x, y, z) {
         const dx = x - camera.position.x;
         const dy = y - camera.position.y;
         const dz = z - camera.position.z;
         s.yaw = Math.atan2(-dx, -dz);
         s.pitch = Math.atan2(dy, Math.hypot(dx, dz));
-      }
+        s.recoil = 0;
+      },
+      /** Aims at a target's chest with the right holdover for its range and the current wind. */
+      solve(i) {
+        const t = world.targets[i];
+        const dist = Math.hypot(t.x - camera.position.x, t.z - camera.position.z);
+        const shot = shotAt(rifle, zero, dist, s.wind);
+        this.aimAt(t.x - shot.drift, t.footY + 0.7 * BODY.HEIGHT + shot.drop, t.z);
+      },
+      targets: () => world.targets.map((t) => ({ lane: t.lane, dist: t.dist, down: t.down })),
+      keeperAlive: () => world.keeper.alive
     }
   };
 }
@@ -545,8 +568,9 @@ function makeRifleModel() {
   bolt.rotation.z = Math.PI / 2;
   bolt.position.set(0.045, 0.03, -0.05);
   g.add(bolt);
-  g.position.set(0.13, -0.16, -0.42);
-  g.rotation.y = 0.05;
+  g.scale.setScalar(0.8);
+  g.position.set(0.17, -0.19, -0.42);
+  g.rotation.y = 0.03;
   return g;
 }
 

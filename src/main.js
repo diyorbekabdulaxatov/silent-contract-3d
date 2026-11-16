@@ -244,6 +244,48 @@ function requestWakeLock() {
 }
 
 show('menu');
+let selfTestStarted = false;
+function maybeSelfTest() {
+  if (location.hash !== '#selftest' || selfTestStarted) return;
+  selfTestStarted = true;
+  runSelfTest();
+}
+maybeSelfTest();
+// The artifact host can hand the hash over after the page has loaded.
+window.addEventListener('hashchange', maybeSelfTest);
+
+/**
+ * Open the page with #selftest to play the mission automatically: every target gets one
+ * shot aimed with the correct holdover, and the result is printed on screen.
+ */
+async function runSelfTest() {
+  const out = document.createElement('pre');
+  out.style.cssText = 'position:fixed;left:8px;top:60px;z-index:100;margin:0;padding:8px 10px;'
+    + 'background:rgba(0,0,0,.8);color:#e9e3d6;font:12px/1.4 monospace;pointer-events:none';
+  document.body.appendChild(out);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  await wait(500);
+  show(null);
+  game.start();
+  game.debug.steady(true);
+  game.toggleScope();
+  const count = game.debug.targets().length;
+  for (let i = 0; i < count; i++) {
+    for (let guard = 0; !game.debug.canFire() && guard < 100; guard++) await wait(100);
+    game.debug.solve(i);
+    await wait(200);
+    game.debug.solve(i);
+    game.fire();
+    out.textContent = 'SELFTEST: shot ' + (i + 1) + ' of ' + count;
+    await wait(900);
+  }
+  await wait(1500);
+  const t = game.debug.targets();
+  out.textContent = 'SELFTEST ' + (t.every((x) => x.down) && game.debug.keeperAlive() ? 'PASS' : 'FAIL') + '\n'
+    + 'down: ' + t.filter((x) => x.down).map((x) => x.lane).join(' ') + '\n'
+    + 'standing: ' + (t.filter((x) => !x.down).map((x) => x.lane).join(' ') || 'none') + '\n'
+    + 'keeper alive: ' + game.debug.keeperAlive() + '\nmode: ' + game.mode;
+}
 
 // Handle for automated tests and debugging in the console.
 /** @type {any} */ (window).SC3D = { game, settings: () => settings };

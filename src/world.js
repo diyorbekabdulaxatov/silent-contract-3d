@@ -14,8 +14,8 @@ export const COLORS = {
   sun: '#f2c08c',
   hemiSky: '#b4c0cb',
   hemiGround: '#3b3329',
-  grass: '#353c2b',
-  lane: '#454d36',
+  grass: '#4a5238',
+  lane: '#5d6646',
   frost: '#c9d3dc',
   wood: '#4a3a2c',
   woodDark: '#2c231b',
@@ -47,9 +47,9 @@ export function buildWorld(mission) {
 
   addSky(scene);
 
-  const hemi = new THREE.HemisphereLight(COLORS.hemiSky, COLORS.hemiGround, 1.15);
+  const hemi = new THREE.HemisphereLight(COLORS.hemiSky, COLORS.hemiGround, 2.1);
   scene.add(hemi);
-  const sun = new THREE.DirectionalLight(COLORS.sun, 1.7);
+  const sun = new THREE.DirectionalLight(COLORS.sun, 2.6);
   sun.position.set(300, 40, -260);
   scene.add(sun);
 
@@ -505,7 +505,7 @@ function addTrees(scene) {
 /** Port Varenne on the horizon, unaffected by fog so it reads as a skyline. */
 function addCity(scene) {
   const r = rng(9);
-  const mat = new THREE.MeshBasicMaterial({ map: windowsTexture(3), color: '#6f7a85', fog: false });
+  const mat = new THREE.MeshBasicMaterial({ map: windowsTexture(3), color: '#46505a', fog: false });
   const geo = new THREE.BoxGeometry(1, 1, 1);
   for (let i = 0; i < 30; i++) {
     const w = 40 + r() * 60;
