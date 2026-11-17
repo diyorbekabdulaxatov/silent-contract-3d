@@ -15,11 +15,14 @@ A 3D remake of the 2D noir sniper game *Silent Contract* (repo `secret-contract`
 - `src/world.js`: builds the scene procedurally (no model files). It also holds the keeper's walk and hit test.
 - `src/textures.js`: canvas textures (grass, earth, paper targets with bullet holes, boards).
 - `src/game.js`: loop, camera, scope, sway and breath, firing, bullet flight, hits, win and fail. `game.debug` has test hooks.
+- `src/models.js`: loads glTF models from `models/` (CC0, listed in `models/CREDITS.md`), scales people to a height with feet at y = 0, and makes materials matte. The box figure and box rifle stay as fallbacks if a model fails to load.
 - `src/scope.js`: scope mask and mil reticle. `src/hud.js`: DOM HUD. `src/input.js`: touch, mouse, keys and gyro. `src/audio.js`: synthesized sound. `src/settings.js`: localStorage, guarded. `src/main.js`: screens and wiring.
 
 ## Rules
 
 - Units are metres, seconds and radians. Axes: x right, y up, z toward the shooter, so downrange is `-z`.
+- New models must be CC0 or similarly free, with an entry in `models/CREDITS.md`. Ask the user before downloading any file (name, source, size).
+- claude.ai artifacts don't serve `.glb`, so `scripts/preview-page.mjs` writes each model as `models/<name>.glb.js` (base64), and `loadModel` falls back to it.
 - People and paper silhouettes must be drawn inside the hit zones in `BODY` (`src/ballistics.js`). These match the 2D game's `LW.bodyGeom`: head circle at `0.935 h` with radius `0.066 h`.
 - Every `src/*.js` file starts with `// @ts-check`. Write JSDoc types where inference fails.
 - Keep `three` in `package.json` and the import map in `index.html` on the same version; `npm run check` enforces this.
@@ -32,5 +35,6 @@ A 3D remake of the 2D noir sniper game *Silent Contract* (repo `secret-contract`
 
 ## Testing tips
 
+- Add `#selftest` to the preview URL to fire one solved shot at every target, or `#keeper` to follow Teodor through the scope. In the artifact viewer, set the hash after the page loads.
 - In the browser console: `SC3D.game.start()`, `SC3D.game.debug.aimAt(x, y, z)`, `SC3D.game.fire()`, `SC3D.game.debug.win()`.
 - `requestAnimationFrame` stops in hidden tabs; shim it with `setTimeout` for automated runs.

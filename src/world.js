@@ -345,6 +345,9 @@ function makeKeeper(scene, def) {
   const h = BODY.HEIGHT * 0.98;
   const group = new THREE.Group();
   scene.add(group);
+  // Simple box figure, shown until the 3D model has loaded (and if it fails to load).
+  const boxes = new THREE.Group();
+  group.add(boxes);
   const coat = new THREE.MeshLambertMaterial({ color: COLORS.coat });
   const trousers = new THREE.MeshLambertMaterial({ color: COLORS.trousers });
   const skin = new THREE.MeshLambertMaterial({ color: COLORS.skin });
@@ -352,21 +355,21 @@ function makeKeeper(scene, def) {
 
   const torso = new THREE.Mesh(new THREE.BoxGeometry(0.24 * h, (BODY.TORSO_Y1 - BODY.TORSO_Y0 + 0.02) * h, 0.17 * h), coat);
   torso.position.y = ((BODY.TORSO_Y0 + BODY.TORSO_Y1) / 2 - 0.01) * h;
-  group.add(torso);
+  boxes.add(torso);
   // Coat skirt over the hips.
   const skirt = new THREE.Mesh(new THREE.BoxGeometry(0.21 * h, 0.1 * h, 0.15 * h), coat);
   skirt.position.y = (BODY.TORSO_Y0 - 0.03) * h;
-  group.add(skirt);
+  boxes.add(skirt);
 
   const head = new THREE.Mesh(new THREE.SphereGeometry(BODY.HEAD_R * h * 0.95, 12, 10), skin);
   head.position.y = BODY.HEAD_Y * h;
-  group.add(head);
+  boxes.add(head);
   const capMesh = new THREE.Mesh(new THREE.CylinderGeometry(BODY.HEAD_R * h * 0.9, BODY.HEAD_R * h * 0.95, 0.035 * h, 12), cap);
   capMesh.position.y = (BODY.HEAD_Y + 0.04) * h;
-  group.add(capMesh);
+  boxes.add(capMesh);
   const neck = new THREE.Mesh(new THREE.BoxGeometry(0.05 * h, 0.04 * h, 0.05 * h), skin);
   neck.position.y = (BODY.TORSO_Y1 + 0.015) * h;
-  group.add(neck);
+  boxes.add(neck);
 
   const legs = [];
   for (const side of [-1, 1]) {
@@ -375,7 +378,7 @@ function makeKeeper(scene, def) {
     const leg = new THREE.Mesh(new THREE.BoxGeometry(0.085 * h, BODY.TORSO_Y0 * h, 0.09 * h), trousers);
     leg.position.y = -BODY.TORSO_Y0 * h / 2;
     hip.add(leg);
-    group.add(hip);
+    boxes.add(hip);
     legs.push(hip);
   }
   const arms = [];
@@ -385,11 +388,23 @@ function makeKeeper(scene, def) {
     const arm = new THREE.Mesh(new THREE.BoxGeometry(0.04 * h, 0.34 * h, 0.06 * h), coat);
     arm.position.y = -0.17 * h;
     shoulder.add(arm);
-    group.add(shoulder);
+    boxes.add(shoulder);
     arms.push(shoulder);
   }
 
   const path = def.path;
+  /** @type {{ model: THREE.Object3D, mixer: THREE.AnimationMixer, actions: Record<string, THREE.AnimationAction> } | null} */
+  let person = null;
+  /** @type {THREE.AnimationAction | null} */
+  let current = null;
+  function play(name, fade) {
+    if (!person || !person.actions[name]) return;
+    const next = person.actions[name];
+    if (next === current) return;
+    next.reset().fadeIn(fade).play();
+    if (current) current.fadeOut(fade);
+    current = next;
+  }
   const state = {
     group,
     h,
@@ -401,12 +416,15 @@ function makeKeeper(scene, def) {
     wait: def.pause,
     /** @param {number} dt */
     update(dt) {
+      if (person) person.mixer.update(dt);
       if (!state.alive) return;
       if (state.wait > 0) {
         state.wait -= dt;
         pose(0);
+        play('Idle', 0.3);
         return;
       }
+      play('Walk', 0.3);
       const goal = path[state.target];
       const dx = goal.x - group.position.x;
       const dz = goal.z - group.position.z;
@@ -445,8 +463,31 @@ function makeKeeper(scene, def) {
     },
     fall() {
       state.alive = false;
-      group.rotation.x = -Math.PI / 2;
-      group.position.y = 0.12 * h;
+      if (person && person.actions.Death) {
+        play('Death', 0.1);
+      } else {
+        group.rotation.x = -Math.PI / 2;
+        group.position.y = 0.12 * h;
+      }
+    },
+    /**
+     * Swaps the box figure for an animated model, scaled and centred by models.js.
+     * @param {{ model: THREE.Object3D, mixer: THREE.AnimationMixer, clips: Record<string, THREE.AnimationClip> }} p
+     */
+    setModel(p) {
+      /** @type {Record<string, THREE.AnimationAction>} */
+      const actions = {};
+      for (const name of Object.keys(p.clips)) actions[name] = p.mixer.clipAction(p.clips[name]);
+      if (actions.Death) {
+        actions.Death.setLoop(THREE.LoopOnce, 1);
+        actions.Death.clampWhenFinished = true;
+      }
+      if (actions.Walk) actions.Walk.timeScale = def.speed / 1.25;
+      person = { model: p.model, mixer: p.mixer, actions };
+      group.add(p.model);
+      boxes.visible = false;
+      current = null;
+      play(state.wait > 0 ? 'Idle' : 'Walk', 0);
     },
     reset() {
       state.alive = true;
@@ -457,6 +498,11 @@ function makeKeeper(scene, def) {
       group.rotation.set(0, 0, 0);
       group.position.set(path[0].x, 0, path[0].z);
       pose(0);
+      if (person) {
+        person.mixer.stopAllAction();
+        current = null;
+        play('Idle', 0);
+      }
     }
   };
 

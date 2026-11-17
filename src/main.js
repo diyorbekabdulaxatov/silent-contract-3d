@@ -246,9 +246,20 @@ function requestWakeLock() {
 show('menu');
 let selfTestStarted = false;
 function maybeSelfTest() {
-  if (location.hash !== '#selftest' || selfTestStarted) return;
-  selfTestStarted = true;
-  runSelfTest();
+  if (selfTestStarted) return;
+  if (location.hash === '#selftest') {
+    selfTestStarted = true;
+    runSelfTest();
+  } else if (location.hash === '#keeper') {
+    // Follows Teodor through the scope, for checking his model and animations.
+    selfTestStarted = true;
+    show(null);
+    game.start();
+    game.debug.steady(true);
+    game.toggleScope();
+    game.setZoom(12);
+    setInterval(() => game.debug.lookAtKeeper(), 50);
+  }
 }
 maybeSelfTest();
 // The artifact host can hand the hash over after the page has loaded.

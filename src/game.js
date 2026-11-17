@@ -6,6 +6,7 @@ import { KESTREL, zeroAngle, shotAt, step, silhouetteHit, segmentBox, BODY, SOUN
 import { buildWorld } from './world.js';
 import { PAPER, paintHole } from './textures.js';
 import { drawScope, clearScope } from './scope.js';
+import { makePerson, makeProp } from './models.js';
 
 const BASE_FOV = 55;
 const ZOOM_MIN = 3;
@@ -51,6 +52,18 @@ export function createGame(opts) {
   world.scene.add(camera);
   const rifleModel = makeRifleModel();
   camera.add(rifleModel);
+
+  // Swap in the 3D models once they load. The simple box versions stay if loading fails.
+  makeProp('rifle', 1.15)
+    .then((mesh) => {
+      for (const child of rifleModel.children) child.visible = false;
+      mesh.position.set(0, 0.04, -0.35);
+      rifleModel.add(mesh);
+    })
+    .catch((err) => console.warn('Rifle model did not load; keeping the simple rifle.', err));
+  makePerson('keeper', world.keeper.h)
+    .then((p) => world.keeper.setModel(p))
+    .catch((err) => console.warn('Keeper model did not load; keeping the simple figure.', err));
 
   const rifle = KESTREL;
   const zero = zeroAngle(rifle);
@@ -535,6 +548,10 @@ export function createGame(opts) {
         const dist = Math.hypot(t.x - camera.position.x, t.z - camera.position.z);
         const shot = shotAt(rifle, zero, dist, s.wind);
         this.aimAt(t.x - shot.drift, t.footY + 0.7 * BODY.HEIGHT + shot.drop, t.z);
+      },
+      lookAtKeeper() {
+        const g = world.keeper.group.position;
+        this.aimAt(g.x, 1.1, g.z);
       },
       targets: () => world.targets.map((t) => ({ lane: t.lane, dist: t.dist, down: t.down })),
       keeperAlive: () => world.keeper.alive
