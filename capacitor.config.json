@@ -1,0 +1,8 @@
+{
+  "appId": "com.diyorbek.silentcontract",
+  "appName": "Silent Contract 3D",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0b1016"
+  }
+}

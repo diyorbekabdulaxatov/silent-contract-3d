@@ -18,6 +18,14 @@ A noir sniper game in 3D for phones and browsers, built with [Three.js](https://
 
 Gyro aiming (tilt to aim) is in Settings, off by default.
 
+## Android test build
+
+Every push builds a test APK in GitHub Actions. The newest one is always at:
+
+https://github.com/diyorbekabdulaxatov/silent-contract-3d/releases/download/android-latest/silent-contract-3d.apk
+
+Open that link on the phone, download the APK, allow installs from your browser once, and install. New builds install over the old one and keep your saves, because they share a test signing key (see `android-signing/README.md`).
+
 ## How it's built
 
 - Plain JavaScript modules, type-checked by TypeScript (`// @ts-check` with JSDoc). There's no build step for development: `index.html` loads `three` from a pinned CDN copy through an import map.
@@ -29,4 +37,4 @@ Gyro aiming (tilt to aim) is in Settings, off by default.
 1. Range prototype: feel and performance on a Galaxy S24. *(now)*
 2. People with animation, AI and alarms in 3D.
 3. The other twelve missions from the 2D game.
-4. Android app through Capacitor and GitHub Actions (APK, then AAB for Google Play).
+4. Google Play: a release key, an AAB build and a store listing. (The test APK already builds on every push.)

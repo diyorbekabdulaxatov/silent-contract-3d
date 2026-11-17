@@ -1,0 +1,72 @@
+name: Android
+
+# Builds a test APK on every push and publishes it as the "android-latest" pre-release,
+# so the newest build is always at:
+#   https://github.com/<owner>/<repo>/releases/download/android-latest/silent-contract-3d.apk
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Build the test APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: 0.1.${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build the game
+        run: npm run build
+
+      - name: Create and configure the Android project
+        run: npm run android
+
+      - name: Build the APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk silent-contract-3d.apk
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: silent-contract-3d-apk
+          path: silent-contract-3d.apk
+          retention-days: 14
+
+      - name: Publish the "android-latest" pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --yes --cleanup-tag || true
+          gh release create android-latest silent-contract-3d.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Android test build $VERSION_NAME" \
+            --notes "Test build from \`${GITHUB_REF_NAME}\` at ${GITHUB_SHA::7}. Signed with the shared test key (see android-signing/README.md). On the phone: download, open, allow installing from this source once, then install."

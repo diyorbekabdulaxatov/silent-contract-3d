@@ -9,12 +9,17 @@
     "typecheck": "tsc -p tsconfig.json",
     "test": "node --test test/*.test.js",
     "build": "vite build",
-    "preview-page": "node scripts/preview-page.mjs"
+    "preview-page": "node scripts/preview-page.mjs",
+    "android": "node scripts/android.mjs"
   },
   "dependencies": {
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.6.2",
     "three": "0.170.0"
   },
   "devDependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/cli": "8.6.2",
     "@types/three": "0.170.0",
     "typescript": "5.6.3",
     "vite": "5.4.11"

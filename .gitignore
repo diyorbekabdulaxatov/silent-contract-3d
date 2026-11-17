@@ -1,6 +1,6 @@
 node_modules/
 dist/
 preview/
-android/app/build/
+android/
 .DS_Store
 *.log

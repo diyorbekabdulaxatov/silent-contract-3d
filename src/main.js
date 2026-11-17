@@ -133,6 +133,29 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden) pauseGame();
 });
 
+// ---------- Android back button (only inside the Capacitor app) ----------
+
+const cap = /** @type {any} */ (window).Capacitor;
+if (cap && cap.isNativePlatform && cap.isNativePlatform() && cap.Plugins && cap.Plugins.App) {
+  cap.Plugins.App.addListener('backButton', () => {
+    const open = SCREENS.find((s) => !$('screen-' + s).hidden);
+    if (!open) {
+      pauseGame();
+    } else if (open === 'pause') {
+      show(null);
+      game.resume();
+    } else if (open === 'settings') {
+      $('btn-settings-done').click();
+    } else if (open === 'results') {
+      game.toMenu();
+      showBest();
+      show('menu');
+    } else {
+      cap.Plugins.App.exitApp();
+    }
+  });
+}
+
 // ---------- settings ----------
 
 const form = {

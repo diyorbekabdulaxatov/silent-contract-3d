@@ -28,6 +28,12 @@ A 3D remake of the 2D noir sniper game *Silent Contract* (repo `secret-contract`
 - Keep `three` in `package.json` and the import map in `index.html` on the same version; `npm run check` enforces this.
 - Draw code must not throw: the frame loop catches errors, but keep it defensive.
 
+## Android
+
+- Capacitor 8 wraps `dist/` (`capacitor.config.json`, app id `com.diyorbek.silentcontract`, which can still change before the first Google Play upload). `android/` is generated in CI by `scripts/android.mjs` and is not committed. Put Android customisations (manifest, MainActivity, icon, splash, signing) in that script.
+- `.github/workflows/android.yml` builds a debug APK, signed with the public test key in `android-signing/`, and republishes the `android-latest` pre-release on every push.
+- The game reaches native plugins through `window.Capacitor.Plugins` (e.g. the back button in `main.js`), so the web build needs no Capacitor imports.
+
 ## Commands (run in CI, not on the user's Mac)
 
 - `npm run check`: project checks. `npm run typecheck`: `tsc` over `src/`. `npm test`: ballistics unit tests. `npm run build`: Vite build to `dist/`, with three bundled and the import map removed.
